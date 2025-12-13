@@ -30,6 +30,10 @@ Scalability: Dockerized infrastructure managing Zookeeper, Kafka, and MongoDB co
 
 Persistence: Asynchronous logging of all successful notifications to NoSQL storage.
 
+Resilience: Implements Exponential Backoff Retries (3 attempts) to handle transient network failures before giving up.
+
+Fault Tolerance: Automatic Dead Letter Queue (DLQ) routing for permanent failures, ensuring Zero Data Loss.
+
 🛠️ Tech Stack
 Core: Java 21, Spring Boot 3.4
 
