@@ -39,8 +39,6 @@ Database: MongoDB
 
 Infrastructure: Docker Compose
 
-
-
 ⚡ How to Run
 Start Infrastructure
 
@@ -64,4 +62,4 @@ Test Fault Tolerance (DLQ)
 Bash
 
 curl -X POST "http://localhost:9090/api/notify?message=Testing_error"
-Result: Consumer crash simulated -> Message moved to notifications-dlq
+Result: Consumer crash simulated -> Message moved to notifications-dlq.
