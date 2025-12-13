@@ -1,6 +1,5 @@
 package com.streamflow.core.service;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +17,7 @@ import java.time.LocalDateTime;
 public class NotificationService {
 
     private static final String TOPIC = "user-notifications";
+    private static final String DLQ_TOPIC = "notifications-dlq";
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -26,31 +26,49 @@ public class NotificationService {
     private NotificationRepository repository;
 
     // --- 1. PRODUCER (The Sender) ---
-    // This sends the message to Kafka. It returns IMMEDIATELY (Async).
-    // The user doesn't wait for the email to actually be sent.
+    // Sends a message to the main Kafka topic.
     public String sendNotification(String message) {
         kafkaTemplate.send(TOPIC, message);
         return "Message sent to Kafka topic: " + message;
     }
 
     // --- 2. CONSUMER (The Worker) ---
-    // This listens to Kafka silently in the background.
-    // When a message arrives, it wakes up and saves it to MongoDB.
+    // Reads from Kafka and saves to MongoDB.
+    // Has "Fault Tolerance": If it crashes, it moves data to DLQ.
     @KafkaListener(topics = TOPIC, groupId = "notification-group")
     public void consume(String message) {
         System.out.println("🔥 Kafka Listener received: " + message);
 
-        // Save to MongoDB
-        NotificationLog log = new NotificationLog();
-        log.setMessage(message);
-        log.setTimestamp(LocalDateTime.now());
-        repository.save(log);
-        
-        System.out.println("✅ Saved to MongoDB!");
+        try {
+            // SIMULATE ERROR: If message contains "error", force a crash.
+            if (message.contains("error")) {
+                throw new RuntimeException("Simulated API Failure!");
+            }
+
+            // Happy Path: Save to MongoDB
+            NotificationLog log = new NotificationLog();
+            log.setMessage(message);
+            log.setTimestamp(LocalDateTime.now());
+            repository.save(log);
+            System.out.println("✅ Saved to MongoDB!");
+
+        } catch (Exception e) {
+            System.err.println("❌ Processing Failed. Moving to DLQ...");
+            // Send to Dead Letter Topic manually so data isn't lost
+            kafkaTemplate.send(DLQ_TOPIC, "FAILED: " + message);
+        }
+    }
+
+    // --- 3. DLQ LISTENER (The Safety Net) ---
+    // Listens to the 'dead' messages.
+    // In a real company, this would trigger a Slack alert or PagerDuty.
+    @KafkaListener(topics = DLQ_TOPIC, groupId = "dlq-group")
+    public void consumeDLQ(String message) {
+        System.out.println("⚠️ DLQ Received Bad Message: " + message);
     }
 }
 
-// --- SUPPORTING CLASSES (Put these in the same file for speed) ---
+// --- SUPPORTING CLASSES (Keep these here for simplicity) ---
 
 @RestController
 @RequestMapping("/api/notify")
