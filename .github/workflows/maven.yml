@@ -20,16 +20,16 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    # ------------------------------------------------------------------
+   # ------------------------------------------------------------------
     # STEP 1: START INFRASTRUCTURE (Kafka + Zookeeper + Mongo)
-    # We use your existing docker-compose.yml file!
+    # FIX: Use 'docker compose' (V2) instead of 'docker-compose' (V1)
     # ------------------------------------------------------------------
     - name: Start Docker Compose Services
       run: |
-        docker-compose up -d
+        docker compose up -d
         echo "Waiting 20 seconds for Kafka to wake up..."
         sleep 20
-        docker ps  # (Optional) Prints running containers for debugging
+        docker ps
 
     # ------------------------------------------------------------------
     # STEP 2: RUN TESTS
