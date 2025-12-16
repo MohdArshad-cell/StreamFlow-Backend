@@ -1,0 +1,42 @@
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    # ------------------------------------------------------------------
+    # STEP 1: START INFRASTRUCTURE (Kafka + Zookeeper + Mongo)
+    # We use your existing docker-compose.yml file!
+    # ------------------------------------------------------------------
+    - name: Start Docker Compose Services
+      run: |
+        docker-compose up -d
+        echo "Waiting 20 seconds for Kafka to wake up..."
+        sleep 20
+        docker ps  # (Optional) Prints running containers for debugging
+
+    # ------------------------------------------------------------------
+    # STEP 2: RUN TESTS
+    # We navigate to 'core/core' because that's where your pom.xml lives
+    # ------------------------------------------------------------------
+    - name: Grant execute permission for mvnw
+      run: chmod +x core/core/mvnw
+
+    - name: Build and Test
+      run: cd core/core && ./mvnw clean test
