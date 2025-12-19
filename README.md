@@ -1,6 +1,6 @@
 # 🌊 StreamFlow - Distributed Notification Engine
 
-![Build Status](https://github.com/MohdArshad-cell/StreamFlow-Backend/actions/workflows/ci-cd.yml/badge.svg)
+![CI/CD Pipeline](https://github.com/MohdArshad-cell/FlashTix-Backend/actions/workflows/maven.yml/badge.svg)
 ![Java](https://img.shields.io/badge/Java-17-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4-green)
 ![Docker](https://img.shields.io/badge/Docker-Enabled-blue)
