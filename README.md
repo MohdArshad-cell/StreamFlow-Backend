@@ -82,6 +82,13 @@ Run the full suite which spins up ephemeral Docker containers:
 | `POST` | `/api/notify` | Triggers event. Writes to Redis + Kafka. | Async (Fast) |
 | `GET` | `/api/notify/recent` | Fetches latest 10 notifications from Redis. | **< 5ms** |
 
+## 📸 Visual Proof
+
+### Distributed Tracing (Zipkin)
+*Visualizing the request latency across microservices.*
+![Zipkin Trace](assets/trace.png)
+
+
 ## 👨‍💻 Author
 **Mohd Arshad**
 *Backend Engineer specializing in Distributed Systems.*
