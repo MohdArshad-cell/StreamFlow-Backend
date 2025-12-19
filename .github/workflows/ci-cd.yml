@@ -31,6 +31,7 @@ jobs:
     - name: Run Integration Tests
       run: |
         cd core/core
+        chmod +x mvnw   # <--- ADD THIS LINE
         ./mvnw clean verify
 
   docker-push:

@@ -1,101 +1,87 @@
-![Build Status](https://github.com/MohdArshad-cell/StreamFlow-Backend/actions/workflows/maven.yml/badge.svg)
-
-````markdown
 # 🌊 StreamFlow - Distributed Notification Engine
 
-StreamFlow is a fault-tolerant, asynchronous notification system designed for high throughput and reliability. It utilizes **Apache Kafka** for decoupled event streaming, **MongoDB** for persistent logging, and implements a robust **Resilience Strategy** using Exponential Backoff and Dead Letter Queues (DLQ) to ensure zero data loss.
+![Build Status](https://github.com/MohdArshad-cell/StreamFlow-Backend/actions/workflows/ci-cd.yml/badge.svg)
+![Java](https://img.shields.io/badge/Java-17-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4-green)
+![Docker](https://img.shields.io/badge/Docker-Enabled-blue)
 
-## 🚀 Tech Stack
+**StreamFlow** is a production-grade, fault-tolerant notification engine designed for high throughput and low latency. It implements a **Write-Through Caching** strategy with **Redis** for instant reads, **Apache Kafka** for asynchronous decoupling, and **Zipkin** for distributed tracing.
+
+It features a robust **Resilience Strategy** (Circuit Breaker & DLQ) to ensure **Zero Data Loss** during traffic spikes or downstream failures.
+
+## 🚀 Tech Stack (The "Top 10%" Stack)
 - **Core:** Java 17, Spring Boot 3.4
-- **Messaging:** Apache Kafka (with Zookeeper)
+- **Messaging:** Apache Kafka (Event-Driven Architecture)
+- **Caching:** Redis (Write-Through Pattern for sub-millisecond reads)
 - **Database:** MongoDB (NoSQL Persistence)
-- **Resilience:** Spring Retry (Exponential Backoff policies)
-- **Containerization:** Docker & Docker Compose
-- **Documentation:** OpenAPI (Swagger UI)
+- **Resilience:** Spring Retry (Exponential Backoff) & Dead Letter Queues (DLQ)
+- **Observability:** Zipkin (Distributed Tracing & Latency Monitoring)
+- **Testing:** Testcontainers (Integration Testing with real Docker infra)
+- **CI/CD:** GitHub Actions (Multi-Stage Docker Builds)
 
 ## 🏗️ System Architecture
 
-The system decouples producers and consumers to handle massive traffic spikes gracefully without crashing downstream services.
+The system splits traffic into a **Fast Read Path** (served from Memory) and a **Reliable Write Path** (processed Asynchronously).
 
-```mermaid
-graph LR
-    User[User / API Client] -->|POST /notify| API[Producer Service]
-    API -->|Async Event| Kafka{Kafka Topic: user-notifications}
-    
-    subgraph "Microservices Cluster"
-        Kafka -->|Consume| Consumer[Worker Service]
-        Consumer -->|Success| DB[(MongoDB)]
-        Consumer --x|Transient Fail| Retry[Exponential Backoff]
-        Retry -->|Max Retries Exceeded| DLQ{Dead Letter Queue}
-    end
-    
-    DLQ -.->|Manual Inspection| Admin[DevOps Dashboard]
-````
+![System Architecture](assets/architecture.png)
 
-### Key Features
+### Key Features Implemented
 
-1.  **Event-Driven:** Fully asynchronous communication prevents blocking the main API thread.
-2.  **Resilience (Circuit Breaker Logic):**
-      * **Transient Failures:** If the consumer encounters a network blip, it retries **3 times** with **Exponential Backoff** (1s wait, then 2s wait).
-      * **Permanent Failures:** If all retries fail, the message is **not lost**. It is automatically moved to a **Dead Letter Queue (DLQ)** (`notifications-dlq`) for later inspection.
-3.  **Zero Data Loss:** Critical notifications are never dropped, ensuring 100% reliability for business-critical alerts.
+1.  **Write-Through Caching (Redis):**
+    * Recent notifications are cached in Redis immediately upon receipt.
+    * **Impact:** Reduces database load and enables **O(1)** read time for recent alerts.
+
+2.  **Resilience & Fault Tolerance:**
+    * **Retry Policy:** 3 attempts with Exponential Backoff (1s, 2s, 4s) for transient network blips.
+    * **Dead Letter Queue (DLQ):** Poison pill messages are automatically routed to `notifications-dlq` after retries fail, ensuring no message is ever lost.
+
+3.  **Observability (Zipkin):**
+    * Full request tracing across microservices.
+    * Visualize latency breakdowns: `API -> Kafka -> Consumer -> Mongo`.
+
+4.  **Production-Grade Testing:**
+    * Uses **Testcontainers** to spin up *actual* Kafka and MongoDB instances during tests.
+    * No mocks for infrastructure components—guarantees code works in the real world.
 
 ## 🛠️ How to Run
 
-### 1\. Start Infrastructure
+### Prerequisites
+* Docker & Docker Compose (That's it. No local Java/Mongo needed).
 
-Make sure Docker Desktop is running, then spin up Kafka, Zookeeper, and MongoDB:
+### 1. Start Infrastructure & App
+We use a unified Docker environment for Kafka, Zookeeper, Mongo, Redis, and Zipkin.
 
 ```bash
 docker-compose up -d
 ```
 
-### 2\. Run the Application
-
-Navigate to the project folder and start the Spring Boot app:
-
+### 2. Run the Service
 ```bash
 cd core/core
-./mvnw.cmd spring-boot:run
+./mvnw clean spring-boot:run
 ```
 
-### 3\. Explore the API
-
-Once the server is running, access the interactive API documentation:
-👉 **[http://localhost:9090/swagger-ui.html](https://www.google.com/search?q=http://localhost:9090/swagger-ui.html)**
+### 3. Explore
+* **Swagger API:** [http://localhost:9090/swagger-ui.html](http://localhost:9090/swagger-ui.html)
+* **Zipkin Dashboard:** [http://localhost:9411](http://localhost:9411) (Check traces)
 
 -----
 
-## 🧪 Fault Tolerance Proof (The "Crash Test")
+## 🧪 Testing & Verification
 
-We simulated a system failure by sending a "poison pill" message (`error`) to the system. The logs demonstrate the **Exponential Backoff** and **DLQ Fallback** mechanisms kicking in to protect data integrity.
-
-### Scenario:
-
-1.  **User** sends a notification with the message text `"error"`.
-2.  **Consumer** detects the error and throws an exception.
-3.  **Spring Retry** attempts to process it 3 times with increasing delays.
-4.  **Recovery:** After the 3rd failure, the system captures the event and routes it to the `notifications-dlq` topic.
-
-### Console Output Evidence:
-
-```text
-🔄 Processing Attempt: error
-... (1 second wait) ...
-🔄 Processing Attempt: error
-... (2 second wait) ...
-🔄 Processing Attempt: error
-❌ All Retries Failed. Moving to DLQ...
-⚠️ DLQ Received Bad Message: FAILED: error
+### Integration Tests (Testcontainers)
+Run the full suite which spins up ephemeral Docker containers:
+```bash
+./mvnw clean verify
 ```
 
-## 📝 API Endpoints
+### API Endpoints
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/notify?message={text}` | Triggers an asynchronous notification event. |
+| Method | Endpoint | Description | SLA |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/notify` | Triggers event. Writes to Redis + Kafka. | Async (Fast) |
+| `GET` | `/api/notify/recent` | Fetches latest 10 notifications from Redis. | **< 5ms** |
 
 ## 👨‍💻 Author
-
 **Mohd Arshad**
-***
+*Backend Engineer specializing in Distributed Systems.*
