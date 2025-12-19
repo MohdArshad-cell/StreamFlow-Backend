@@ -24,7 +24,16 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: streamflow-zipkin
+    ports:
+      - "9411:9411"
+  redis:
+    image: redis:alpine
+    container_name: streamflow-redis
+    ports:
+      - "6379:6379"
   mongodb:
     image: mongo:latest
     container_name: streamflow-mongodb
